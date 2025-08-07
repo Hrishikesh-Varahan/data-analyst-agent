@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from io import StringIO, BytesIO
-from openai import OpenAI
+import openai
 import os
 
-# Set up OpenAI
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Set up OpenAI (New syntax for openai>=1.0)
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # UI
 st.set_page_config(page_title="📊 Data Analyst Agent with Charts")
@@ -37,8 +37,8 @@ Task:
 {task}
         """
 
-        # OpenAI call
-        response = client.chat.completions.create(
+        # OpenAI call (New syntax)
+        response = openai.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "You are a helpful data analyst who can analyze CSVs and produce plots."},
@@ -47,27 +47,24 @@ Task:
         )
 
         result = response.choices[0].message.content.strip()
-        
-        # Try to detect if result contains code
+
+        # Detect and execute Python code
         if "```python" in result:
             code = result.split("```python")[1].split("```")[0]
 
-            # Display code
             st.subheader("Generated Python Code:")
             st.code(code, language="python")
 
-            # Execute code safely
             try:
                 local_env = {"df": df, "plt": plt}
                 exec(code, {}, local_env)
                 
                 fig = plt.gcf()
                 st.pyplot(fig)
-                plt.clf()  # Clear for next run
+                plt.clf()
             except Exception as e:
                 st.error(f"Plotting Error: {e}")
         else:
-            # Just plain text answer
             st.subheader("Answer:")
             st.write(result)
 
