@@ -1,46 +1,75 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
+import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-from io import BytesIO
-import base64
+from io import StringIO, BytesIO
+from openai import OpenAI
 import os
 
-from openai import OpenAI
-
-app = FastAPI()
-
+# Set up OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-@app.post("/api/")
-async def analyze(questions: UploadFile = File(...), files: list[UploadFile] = File([])):
-    q_text = (await questions.read()).decode()
-    file_data = {}
-    
-    for file in files:
-        if file.filename.endswith(".csv"):
-            df = pd.read_csv(BytesIO(await file.read()))
-            file_data[file.filename] = df.to_csv(index=False)
-        elif file.filename.endswith(".json"):
-            file_data[file.filename] = (await file.read()).decode()
+# UI
+st.set_page_config(page_title="📊 Data Analyst Agent with Charts")
+st.title("📊 Data Analyst Agent with Chart Support")
+st.write("Upload a CSV file and describe the task, e.g., 'Show histogram of sales', 'plot price vs rating', etc.")
 
-    prompt = f"""Answer the following questions using any attached CSV or JSON data if relevant.
+# Inputs
+task = st.text_area("What do you want to do?", placeholder="Example: Generate a scatter plot of X vs Y")
+uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
 
-Questions:
-{q_text}
+if st.button("Analyze") and uploaded_file and task:
+    try:
+        df = pd.read_csv(uploaded_file)
+        csv_str = df.to_csv(index=False)
+        
+        # Prepare prompt
+        prompt = f"""
+You are a data analyst. You will be given a CSV file and a task. 
+1. If the task involves plotting (like histogram, bar chart, scatter plot), output Python matplotlib code to generate that plot. 
+2. Otherwise, just answer in text.
 
-Attached files:
-{list(file_data.keys())}
-"""
+Only output Python code if a chart is needed. Otherwise answer normally.
 
-    messages = [{"role": "user", "content": prompt}]
+CSV:
+{csv_str[:10000]}
 
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=messages
-    )
+Task:
+{task}
+        """
 
-    answer = response.choices[0].message.content
+        # OpenAI call
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a helpful data analyst who can analyze CSVs and produce plots."},
+                {"role": "user", "content": prompt}
+            ]
+        )
 
-    return JSONResponse(content={"answer": answer})
+        result = response.choices[0].message.content.strip()
+        
+        # Try to detect if result contains code
+        if "```python" in result:
+            code = result.split("```python")[1].split("```")[0]
+
+            # Display code
+            st.subheader("Generated Python Code:")
+            st.code(code, language="python")
+
+            # Execute code safely
+            try:
+                local_env = {"df": df, "plt": plt}
+                exec(code, {}, local_env)
+                
+                fig = plt.gcf()
+                st.pyplot(fig)
+                plt.clf()  # Clear for next run
+            except Exception as e:
+                st.error(f"Plotting Error: {e}")
+        else:
+            # Just plain text answer
+            st.subheader("Answer:")
+            st.write(result)
+
+    except Exception as e:
+        st.error(f"Error: {e}")
