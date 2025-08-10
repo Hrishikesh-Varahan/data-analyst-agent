@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import openai
+import google.generativeai as genai
 
-st.set_page_config(page_title="📊 Data Analyst Agent with Charts")
-st.title("📊 Data Analyst Agent with Chart Support")
+st.set_page_config(page_title="📊 Data Analyst Agent with Charts (Gemini)")
+st.title("📊 Data Analyst Agent with Chart Support (Gemini)")
 st.write("Upload a CSV file and describe the task, e.g., 'Show histogram of sales', 'plot price vs rating', etc.")
 
 # Load API Key from Secrets
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
 task = st.text_area("What do you want to do?", placeholder="Example: Generate a scatter plot of X vs Y")
 uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
@@ -30,15 +30,9 @@ Task:
 {task}
         """
 
-        response = openai.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "You are a helpful data analyst who can analyze CSVs and produce plots."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-
-        result = response.choices[0].message.content.strip()
+        model = genai.GenerativeModel("gemini-1.5-pro")
+        response = model.generate_content(prompt)
+        result = response.text.strip()
 
         if "```python" in result:
             code = result.split("```python")[1].split("```")[0]
