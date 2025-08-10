@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
-import openai
+import google.generativeai as genai
 
 # Load API key from Streamlit Secrets
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-st.title("🧠 Data Analyst Agent")
+st.title("🧠 Data Analyst Agent (Gemini)")
 st.write("Upload a CSV file and describe the task. Example: 'Give summary statistics'.")
 
 task = st.text_input("Task:")
@@ -16,13 +16,8 @@ if st.button("Analyze") and uploaded_file and task:
     prompt = f"Perform the following task on this dataset:\nTask: {task}\n\nData:\n{df.head(10).to_csv(index=False)}"
 
     with st.spinner("Analyzing..."):
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a data analyst."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        result = response.choices[0].message.content
+        model = genai.GenerativeModel("gemini-1.5-pro")  # 'pro' is best for reasoning
+        response = model.generate_content(prompt)
+
         st.subheader("📝 Result")
-        st.write(result)
+        st.write(response.text)
