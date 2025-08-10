@@ -2,17 +2,13 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import openai
-import os
 
 st.set_page_config(page_title="📊 Data Analyst Agent with Charts")
 st.title("📊 Data Analyst Agent with Chart Support")
 st.write("Upload a CSV file and describe the task, e.g., 'Show histogram of sales', 'plot price vs rating', etc.")
 
-# Load API Key
-openai.api_key = os.getenv("OPENAI_API_KEY")
-if not openai.api_key:
-    st.error("⚠️ OPENAI_API_KEY not set. Add it in Streamlit Secrets.")
-    st.stop()
+# Load API Key from Secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 task = st.text_area("What do you want to do?", placeholder="Example: Generate a scatter plot of X vs Y")
 uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
