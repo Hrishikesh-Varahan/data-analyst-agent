@@ -3,8 +3,8 @@ import pandas as pd
 import openai
 import os
 
-# Set your OpenAI API key
-openai.api_key = st.secrets.get("OPENAI_API_KEY", "sk-...")
+# Set your OpenAI API key from environment variable
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 st.title("🧠 Data Analyst Agent")
 st.write("Upload a CSV file and describe the task. Example: 'Give summary statistics'.")
@@ -17,7 +17,7 @@ if st.button("Analyze") and uploaded_file and task:
     prompt = f"Perform the following task on this dataset:\nTask: {task}\n\nData:\n{df.head(10).to_csv(index=False)}"
 
     with st.spinner("Analyzing..."):
-        response = openai.chat.completions.create(  # ✅ NEW syntax
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a data analyst."},
