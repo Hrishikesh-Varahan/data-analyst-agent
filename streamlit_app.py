@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 import openai
-import os
 
-# Set your OpenAI API key from environment variable
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Load API key from Streamlit Secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 st.title("🧠 Data Analyst Agent")
 st.write("Upload a CSV file and describe the task. Example: 'Give summary statistics'.")
