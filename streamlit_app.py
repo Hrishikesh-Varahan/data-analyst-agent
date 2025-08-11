@@ -1,12 +1,20 @@
 import streamlit as st
 import pandas as pd
 import httpx
+import os
+from dotenv import load_dotenv
 
 # ------------------ CONFIG ------------------
-# You MUST set this in Streamlit secrets as:
-# [secrets.toml]
-# AIPROXY_TOKEN = "your-token-here"
-AIPROXY_TOKEN = st.secrets["AIPROXY_TOKEN"]
+# Load .env file (optional for local dev)
+load_dotenv()
+
+# Try Streamlit secrets first, then environment variables, then fallback
+AIPROXY_TOKEN = st.secrets.get("AIPROXY_TOKEN", os.getenv("AIPROXY_TOKEN", ""))
+
+if not AIPROXY_TOKEN:
+    st.error("❌ No API token found. Set it in Streamlit secrets or .env file.")
+    st.stop()
+
 AIPROXY_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
 # ------------------ UI ------------------
@@ -38,7 +46,7 @@ def get_ai_response(prompt: str):
             return response.json()
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 401:
-            st.error("❌ Unauthorized: Check your API token in Streamlit secrets.")
+            st.error("❌ Unauthorized: Check your API token.")
         else:
             st.error(f"API error {e.response.status_code}: {e.response.text}")
         return None
