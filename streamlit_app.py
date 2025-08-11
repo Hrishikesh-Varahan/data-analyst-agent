@@ -2,16 +2,23 @@ import streamlit as st
 import pandas as pd
 import httpx
 
-# Load IITM AI Proxy token from Streamlit Secrets
+# ------------------ CONFIG ------------------
+# You MUST set this in Streamlit secrets as:
+# [secrets.toml]
+# AIPROXY_TOKEN = "your-token-here"
 AIPROXY_TOKEN = st.secrets["AIPROXY_TOKEN"]
 AIPROXY_URL = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
+# ------------------ UI ------------------
+st.set_page_config(page_title="Data Analyst Agent", page_icon="🧠", layout="wide")
+
 st.title("🧠 Data Analyst Agent (IITM AI Proxy)")
-st.write("Upload a CSV file and describe the task. Example: 'Give summary statistics'.")
+st.write("Upload a CSV file and describe the task. Example: *'Give summary statistics'*.")
 
 task = st.text_input("Task:")
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
+# ------------------ API CALL ------------------
 def get_ai_response(prompt: str):
     headers = {
         "Authorization": f"Bearer {AIPROXY_TOKEN}",
@@ -20,7 +27,7 @@ def get_ai_response(prompt: str):
     payload = {
         "model": "gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": "You are a helpful data analyst."},
+            {"role": "system", "content": "You are a helpful data analyst. Respond clearly and concisely."},
             {"role": "user", "content": prompt},
         ],
     }
@@ -39,16 +46,33 @@ def get_ai_response(prompt: str):
         st.error(f"Unexpected error: {e}")
         return None
 
+# ------------------ PROCESS ------------------
 if st.button("Analyze") and uploaded_file and task:
-    df = pd.read_csv(uploaded_file)
+    try:
+        df = pd.read_csv(uploaded_file)
+    except Exception as e:
+        st.error(f"Error reading CSV: {e}")
+        st.stop()
+
     prompt = (
         f"Perform the following task on this dataset:\n"
         f"Task: {task}\n\n"
         f"Data (first 10 rows):\n{df.head(10).to_csv(index=False)}"
     )
+
     with st.spinner("Analyzing..."):
         ai_response = get_ai_response(prompt)
+
         if ai_response:
-            result = ai_response["choices"][0]["message"]["content"]
-            st.subheader("📝 Result")
-            st.write(result)
+            try:
+                result = ai_response["choices"][0]["message"]["content"]
+                st.subheader("📝 Result")
+                st.write(result)
+            except KeyError:
+                st.error("Invalid API response format.")
+else:
+    st.caption("⬆️ Upload a CSV and enter a task, then click 'Analyze'.")
+
+# ------------------ FOOTER ------------------
+st.markdown("---")
+st.markdown("Made with ❤️ using Streamlit + IITM AI Proxy")
